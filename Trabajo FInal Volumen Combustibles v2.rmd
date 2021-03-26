@@ -1,0 +1,530 @@
+---
+title: "Análisis de Comportamiento de Consumo de Combustible con R"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown:
+    highlight: kate
+---
+
+
+
+```{r setup, echo=FALSE, cache=FALSE}
+library(knitr)
+library(rmdformats)
+library(rriskDistributions)
+
+
+## Global options
+options(max.print="75")
+opts_chunk$set(echo=FALSE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+opts_knit$set(width=75)
+```
+#Nombre del grupo: La Usina
+
+Formato en el que realizará la presentación del trabajo final:
+
+Pdf creado con r-markdown
+Word con plantilla LNCS de Elsevier
+
+Situación problema que abordarán
+
+Trabajaremos sobre el problema de demanda de combustible en Mendoza desde el 2013 a la fecha.
+
+Justificación: impacto de la pandemia en el consumo y dificultades para pronosticar dicho consumo.
+Limitaciones: 
+
+Pregunta de Investigación o Hipótesis:
+
+Participación de mercado por bandera 
+Participación de mercado por provincia 
+Participación de mercado por conglomerados urbanos 
+Mix de Combustible gas oil sobre total. Crecimiento de  diésel grado 3 últimos 5 años vs gas oil grado 2
+Evolución nafta súper vs GNC
+
+# Definiciones
+
+Carga de Bibliotecas
+```{r}
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(tidytext)
+library(fpp2)
+library(readr)
+
+```
+
+
+
+```{r}
+
+volumen_premium <- read.csv("Volumen_mendoza_premium.csv", stringsAsFactors = FALSE)
+
+volumen_super <- read.csv("Volumen_mendoza_super.csv", stringsAsFactors = FALSE)
+
+volumen_gnc <- read.csv("Volumen_mendoza_gnc.csv", stringsAsFactors = FALSE)
+
+data_serie_premium <- ts(volumen_premium$Volumen, frequency=12, start=2013)
+
+data_serie_super <- ts(volumen_super$Volumen, frequency=12, start=2013)
+
+data_serie_gnc <- ts(volumen_gnc$Volumen, frequency=12, start=2013)
+
+```
+
+Síntesis de los datos de Nafta Premium, GNC y Super leidos de las tablas
+
+```{r}
+summary(volumen_premium)
+summary(volumen_gnc)
+summary(volumen_super)
+
+```
+
+```{r}
+#res1<-fit.cont(data2fit=rnorm(374,40,1))
+#res1
+```
+
+
+Examinemos la cabecera de la tabla para Nafta premium
+```{r}
+head(volumen_premium,5)
+```
+Examinemos la cabecera de la tabla para GNC
+```{r}
+head(volumen_gnc,5)
+```
+Examinemos la cabecera de la tabla para Nafta Super
+```{r}
+head(volumen_super,5)
+```
+
+
+##Varianza y desvío estándar para cada producto
+
+```{r}
+varianza_volumen_premium <- var (volumen_premium$Volumen)
+
+desvio_volumen_premium <- sd (volumen_premium$Volumen)
+
+varianza_volumen_gnc <- var (volumen_gnc$Volumen)
+
+desvio_volumen_gnc <- sd (volumen_gnc$Volumen)
+
+varianza_volumen_super <- var (volumen_super$Volumen)
+
+desvio_volumen_super <- sd (volumen_super$Volumen)
+
+
+```
+Varianza y desvío estándar para Nafta Premium
+
+```{r}
+varianza_volumen_premium 
+desvio_volumen_premium 
+```
+
+Varianza y desvío estándar para Nafta Super
+
+```{r}
+varianza_volumen_super
+desvio_volumen_super
+```
+
+Varianza y desvío estándar para GNC
+
+```{r}
+varianza_volumen_gnc
+desvio_volumen_gnc 
+```
+
+
+
+```{r}
+data_serie_premium <- ts(volumen_premium$Volumen, frequency=12, start=2013)
+
+data_serie_super <- ts(volumen_super$Volumen, frequency=12, start=2013)
+
+data_serie_gnc <- ts(volumen_gnc$Volumen, frequency=12, start=2013)
+
+```
+
+
+Consumo en Volumen N. Premium 
+```{r}
+autoplot(data_serie_premium)+
+  labs(title = "Consumo de Nafta Premium",       
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "#00a0dc")+
+    theme_bw() 
+```
+
+Consumo en Volumen GNC
+```{r}
+autoplot(data_serie_gnc)+
+  labs(title = "Consumo de GNC",       
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "#00a0dc")+
+    theme_bw() 
+```
+
+
+Consumo en Volumen N. Super 
+```{r}
+autoplot(data_serie_super)+
+  labs(title = "Consumo de Nafta Super",       
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "#00a0dc")+
+    theme_bw() 
+```
+
+##################################################################
+##################################################################
+
+```{r}
+fit <- decompose(data_serie_gnc, type='multiplicative')
+
+autoplot(fit)+
+  labs(title = "Descomposición de la Volumen GNC",                   
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "Gears")+
+    theme_bw()
+```
+
+## Grafico de la serie de tiempo con su tendencia
+
+Se grafica la serie de tiempo del volumen de combustible con su tendencia. 
+
+```{r}
+autoplot(data_serie_gnc, series="Valores Volumen") + 
+    autolayer(trendcycle(fit), series="Tendencia") +
+    labs(title = "Serie Volumen GNC",      
+       x = "Tiempo",
+       y = "Valor"
+       ) + 
+    theme_bw()
+```
+
+```{r}
+fit <- decompose(data_serie_super, type='multiplicative')
+
+autoplot(fit)+
+  labs(title = "Descomposición de la Volumen Super",                   
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "Gears")+
+    theme_bw()
+```
+
+## Grafico de la serie de tiempo con su tendencia
+
+Se grafica la serie de tiempo del volumen de combustible con su tendencia. 
+
+```{r}
+autoplot(data_serie_super, series="Valores Volumen") + 
+    autolayer(trendcycle(fit), series="Tendencia") +
+    labs(title = "Serie Volumen Super",      
+       x = "Tiempo",
+       y = "Volumen"
+       ) + 
+    theme_bw()
+```
+
+```{r}
+fit <- decompose(data_serie_premium, type='multiplicative')
+
+autoplot(fit)+
+  labs(title = "Descomposición de la Volumen Premium",                   
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "Gears")+
+    theme_bw()
+```
+
+## Grafico de la serie de tiempo con su tendencia
+
+Se grafica la serie de tiempo del volumen de combustible con su tendencia. 
+
+```{r}
+autoplot(data_serie_premium, series="Valores Volumen") + 
+    autolayer(trendcycle(fit), series="Tendencia") +
+    labs(title = "Serie Volumen Premium",      
+       x = "Tiempo",
+       y = "Valor"
+       ) + 
+    theme_bw()
+```
+
+## Grafico de estacionalidad
+
+Analizamos la estacionalidad del consumo de GNC por mes a través de los años.
+```{r}
+ggseasonplot(data_serie_gnc)
+```
+
+##################################################################
+##################################################################
+
+```{r}
+fit <- decompose(data_serie_premium, type='multiplicative')
+
+autoplot(fit)+
+  labs(title = "Descomposición de la Volumen Premium",                   
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "Gears")+
+    theme_bw()
+```
+
+## Grafico de la serie de tiempo con su tendencia N.Premium
+
+Se grafica la serie de tiempo del volumen de combustible con su tendencia. 
+
+```{r}
+autoplot(data_serie_gnc, series="Valores Volumen") + 
+    autolayer(trendcycle(fit), series="Tendencia") +
+    labs(title = "Serie Volumen Premium",      
+       x = "Tiempo",
+       y = "Valor"
+       ) + 
+    theme_bw()
+```
+
+## Grafico de estacionalidad N. Premium
+
+Analizamos la estacionalidad del consumo de Premium por mes a través de los años.
+```{r}
+ggseasonplot(data_serie_premium)
+```
+
+
+# Pronóstico
+
+## Métodos simples
+
+```{r}
+# elaborando el método
+m1 <- snaive(data_serie_super, h=24)
+
+# graficando el pronóstico
+autoplot(m1)
+
+# verificando el ajuste del método
+autoplot(m1)+autolayer(fitted(m1), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m1)
+```
+
+## Método regresión con N.Super
+
+```{r}
+# elaborando la regresion
+regresion <- tslm(data_serie_super ~ trend + season)
+
+# elaborando el pronostico
+m2 <- forecast(regresion, h=96)
+
+# graficando el pronóstico
+autoplot(m2)
+
+# verificando el ajuste del método
+autoplot(m2)+autolayer(fitted(m2), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m2)
+```
+
+
+## Método holt winters con N.Super
+```{r}
+# elaborando el pronostico
+m3 <- hw(data_serie_super, h=96, seasonal = 'multiplicative')
+
+# graficando el pronóstico
+autoplot(m3)
+
+# verificando el ajuste del método
+autoplot(m3)+autolayer(fitted(m3), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m3)
+```
+
+## ARIMA N.Super
+
+```{r}
+# elaborando el modelo ARIMA
+modelo_arima <- auto.arima(data_serie_super)
+
+# elaborando el pronostico
+m4 <- forecast(modelo_arima, h=96)
+
+# graficando el pronóstico
+autoplot(m4)
+
+# verificando el ajuste del método
+autoplot(m4)+autolayer(fitted(m4), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m4)
+
+
+```
+
+## Métodos simples GNC
+
+```{r}
+# elaborando el método
+m1 <- snaive(data_serie_gnc, h=24)
+
+# graficando el pronóstico
+autoplot(m1)
+
+# verificando el ajuste del método
+autoplot(m1)+autolayer(fitted(m1), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m1)
+```
+
+## Método regresión GNC
+
+
+```{r}
+# elaborando la regresion
+regresion <- tslm(data_serie_gnc ~ trend + season)
+
+# elaborando el pronostico
+m2 <- forecast(regresion, h=96)
+
+# graficando el pronóstico
+autoplot(m2)
+
+# verificando el ajuste del método
+autoplot(m2)+autolayer(fitted(m2), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m2)
+```
+
+
+## Método holt winters GNC
+```{r}
+# elaborando el pronostico
+m3 <- hw(data_serie_gnc, h=96, seasonal = 'multiplicative')
+
+# graficando el pronóstico
+autoplot(m3)
+
+# verificando el ajuste del método
+autoplot(m3)+autolayer(fitted(m3), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m3)
+```
+
+## ARIMA GNC
+
+```{r}
+# elaborando el modelo ARIMA
+modelo_arima <- auto.arima(data_serie_gnc)
+
+# elaborando el pronostico
+m4 <- forecast(modelo_arima, h=96)
+
+# graficando el pronóstico
+autoplot(m4)
+
+# verificando el ajuste del método
+autoplot(m4)+autolayer(fitted(m4), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m4)
+
+
+```
+## Métodos simples premium
+
+```{r}
+# elaborando el método
+m1 <- snaive(data_serie_premium, h=24)
+
+# graficando el pronóstico
+autoplot(m1)
+
+# verificando el ajuste del método
+autoplot(m1)+autolayer(fitted(m1), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m1)
+```
+
+## Método regresión premium
+
+
+```{r}
+# elaborando la regresion
+regresion <- tslm(data_serie_premium ~ trend + season)
+
+# elaborando el pronostico
+m2 <- forecast(regresion, h=96)
+
+# graficando el pronóstico
+autoplot(m2)
+
+# verificando el ajuste del método
+autoplot(m2)+autolayer(fitted(m2), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m2)
+```
+
+
+## Método holt winters premium
+```{r}
+# elaborando el pronostico
+m3 <- hw(data_serie_premium, h=96, seasonal = 'multiplicative')
+
+# graficando el pronóstico
+autoplot(m3)
+
+# verificando el ajuste del método
+autoplot(m3)+autolayer(fitted(m3), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m3)
+```
+
+## ARIMA premium
+
+```{r}
+# elaborando el modelo ARIMA
+modelo_arima <- auto.arima(data_serie_premium)
+
+# elaborando el pronostico
+m4 <- forecast(modelo_arima, h=96)
+
+# graficando el pronóstico
+autoplot(m4)
+
+# verificando el ajuste del método
+autoplot(m4)+autolayer(fitted(m4), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m4)
+
+
+```
+
