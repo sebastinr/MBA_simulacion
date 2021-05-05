@@ -163,6 +163,7 @@
       <li><a href="#ajuste-y-verificación-del-residual-del-método-regresión-n.-grado-3">Ajuste y verificación del residual del Método regresión N. Grado 3</a></li>
       <li><a href="#ajuste-y-verificación-del-residual-del-método-holt-winters-n.-grado-3">Ajuste y verificación del residual del Método Holt-Winters N. Grado 3</a></li>
       <li><a href="#ajuste-y-verificación-del-residual-del-arima-n.-grado-3">Ajuste y verificación del residual del ARIMA N. Grado 3</a></li>
+      <li><a href="#en-resumen">En resumen</a></li>
       </ul></li>
       </ul>
     </div>
@@ -500,6 +501,14 @@ data:  Residuals from ARIMA(0,1,1)
 Q* = 7.0294, df = 18, p-value = 0.9899
 
 Model df: 1.   Total lags used: 19</code></pre>
+</div>
+<div id="en-resumen" class="section level2">
+<h2>En resumen</h2>
+<p>El método que tenga los residuales mas cercanos a una distribución normal y que su ajuste esté dentro de los parámetros punteados, mejor es.</p>
+<p>En nuestro caso el mejór método es el ARIMA.</p>
+<ul>
+<li>Analizando los distintos métodos mediante KPI (RMSE, MSE, MAPE) etc y compararlos. En particular podemos usar el RMSE (Error Cuadrático Medio). El que nos de la menor medida de RMSE es el método predictivo que más se acercará a futuro a los datos reales para ese periodo de tiempo y dentro de una distribución normal. En R se puede hacer con “accuracy(vector datos,..),… Lo que nos devolverá unas columnas con los distintos valores de los indicadores con los cuales comparar los métodos de pronóstico. El que tenga menor valor relativo, mejor es.</li>
+</ul>
 </div>
 </div>
 </div>
