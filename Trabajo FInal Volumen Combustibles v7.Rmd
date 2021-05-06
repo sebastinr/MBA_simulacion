@@ -1,0 +1,660 @@
+---
+title: "Análisis de Comportamiento de Consumo de Combustible con R"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown:
+    highlight: kate
+---
+
+
+```{r setup, echo=FALSE, cache=FALSE, message=FALSE, warning=FALSE}
+
+library(knitr)
+library(rmdformats)
+library(rriskDistributions)
+
+
+## Global options
+options(max.print="75")
+opts_chunk$set(echo=FALSE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+opts_knit$set(width=75)
+```
+# MBA Tradicional - Cohorte 2019 
+
+## Nombre del grupo: La Usina - Integrantes
+
+- Lucia Madrid
+- Andrea Gregorio
+- Fabio Meregalli
+- Ariel Sanchez
+- Sebastián Rios
+
+## Características del Trabajo
+
+### Formato en el que realizará la presentación del trabajo final:
+
+- HTML creado con **R-Markdown**
+
+### Situación problema que abordarán
+
+Este trabajo aborda el problema de demanda de combustible en Mendoza desde el 2013 a Enero 2021. En este tiempo se tratará de detrminar sus estacionalidades en el consumo así como la relación del mismo con el contexto económico del país.
+Dado la tendencia y afectación del consumo medido en volumen del año 2020 por la cuarentena, ¿Es posible predecir dicho consumo en los próximos 24 meses?. Tomando el consumo histórico desde el año 2013 a la fecha de los productos: Nafta Grado 3, Nafta Grado 2 y GNC tratamos de predecir aplicando diferentes métodos de pronóstico estadístico los próximos años. Se analizan las características y resultados de dichos análisis.
+
+### Justificación: 
+
+Impacto de la pandemia en el consumo y dificultades para pronosticar dicho consumo en el futuro.
+
+La evolución sector del retail de combustibles, muestra una interesante radiografía del proceso por el cual atraviesa la economía de un país. 
+
+A través de él, pueden observarse innumerables situaciones que reflejan con exactitud acontecimientos económicos, sociales y naturales y que, por medio de distintos métodos de pronóstico puede anticiparse acontecimientos, dando claridad de inversores y management de empresas.
+
+
+### Fuentes de Datos:
+
+Se utilizó como fuente de información para la base de datos de consumo los datos provistos por la "Secretaría de Energía de la Nación", a través de su página:
+
+*https://www.argentina.gob.ar/economia/energia/hidrocarburos/volumenes*
+
+Dicha base de datos contiene precios y volumenes expendidos por cada estación, agregando además la ubicación de expendio de cada una, agrupadas por mes y año. Sobre esta base de datos seleccionamos los registos correspondientes a la Provincia de Mendoza durante los periodos 2013/01 al 2021/01 agrupándolos por Año/Mes y filtrando los combustibles de Nafta Grado 2, Grado 3 y GNC.
+
+El dominio seleccionado para la obtención de datos, expresa la rigurosa declaración de volúmenes que cada Estacion de Servicios se obliga a cumplir. Esto tiene que ver con una Resolución expresa de la Secretaría de Energía de la Nación, cuyos datos no pueden vulnerarse y los tiempos para ser presentados son perentorios. Por lo tanto, no existe fuente más fidedigna que esta para realizar estudios sobre el retail de combustibles.
+
+
+### Pregunta de Investigación o Hipótesis:
+
+Dado la tendencia y afectación del consumo medido en volumen del año 2020 por la cuarentena, ¿Es posible predecir dicho consumo en los próximos 24 meses?. 
+Tomando el consumo histórico desde el año 2013 a la fecha de los productos: Nafta Grado 3, Nafta Grado 2 y GNC tratamos de predecir aplicando diferentes métodos de pronóstico estadístico los próximos años. Se analizan las características y resultados de dichos análisis. 
+
+### Definiciones
+
+La transferencia de Nafta de Grado 1 a GNC hasta su desaparición debido a una transformación en el parque automotor.Lo que produce el surgimiento y el crecimiento continuo de el GNC, amesetado por momentos por el cambio de modelos en el parque automotor. 
+La transferencia de Nafta de Grado 2 a GNC y a Grado 3, marca una clara sensibilidad a la situación económica y las transferencias a las Naftas de Grado 3 están influenciadas por los nuevos modelos de automóviles.
+
+### Aspectos técnicos del procesamiento de la información
+
+```{r}
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(tidytext)
+library(fpp2)
+library(readr)
+
+```
+
+Se cargan los archivos mediante la función read. de la siguiente manera:
+
+*volumen_premium <- read.csv("Volumen_mendoza_premium.csv", stringsAsFactors = FALSE)*
+
+Se cargan las tablas para GNC, Nafta Grado 2 y Grado 3.
+
+```{r}
+
+volumen_premium <- read.csv("Volumen_mendoza_premium.csv", stringsAsFactors = FALSE)
+
+volumen_super <- read.csv("Volumen_mendoza_super.csv", stringsAsFactors = FALSE)
+
+volumen_gnc <- read.csv("Volumen_mendoza_gnc.csv", stringsAsFactors = FALSE)
+
+data_serie_premium <- ts(volumen_premium$Volumen, frequency=12, start=2013)
+
+data_serie_super <- ts(volumen_super$Volumen, frequency=12, start=2013)
+
+data_serie_gnc <- ts(volumen_gnc$Volumen, frequency=12, start=2013)
+
+```
+
+
+**Examinemos la cabecera de la tabla para Nafta Grado 3 **
+```{r}
+head(volumen_premium,5)
+```
+**Examinemos la cabecera de la tabla para GNC **
+```{r}
+head(volumen_gnc,5)
+```
+**Examinemos la cabecera de la tabla para Nafta Grado 2 **
+```{r}
+head(volumen_super,5)
+```
+
+
+## Varianza y desvío estándar para cada producto
+
+```{r}
+varianza_volumen_premium <- var (volumen_premium$Volumen)
+
+desvio_volumen_premium <- sd (volumen_premium$Volumen)
+
+varianza_volumen_gnc <- var (volumen_gnc$Volumen)
+
+desvio_volumen_gnc <- sd (volumen_gnc$Volumen)
+
+varianza_volumen_super <- var (volumen_super$Volumen)
+
+desvio_volumen_super <- sd (volumen_super$Volumen)
+
+
+```
+**Varianza y desvío estándar para Nafta Grado 3**
+
+```{r}
+varianza_volumen_premium 
+desvio_volumen_premium 
+```
+
+**Varianza y desvío estándar para Nafta Grado 2**
+
+```{r}
+varianza_volumen_super
+desvio_volumen_super
+```
+
+**Varianza y desvío estándar para GNC**
+
+```{r}
+varianza_volumen_gnc
+desvio_volumen_gnc 
+```
+
+**Consumo en Volumen N. Grado 3 **
+```{r}
+autoplot(data_serie_premium)+
+  labs(title = "Consumo de Nafta Grado 3",       
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "#00a0dc")+
+    theme_bw() 
+```
+
+El producto que poseen las estaciones de servicio en stock es en consignación y son comercializados por cuenta y orden de la petrolera. Los cupos de combustibles se acuerdan conforme a estacionalidad y demás cuestiones de mercado, no obstante es la petrolera la que define los volúmenes que entrega a cada estación de servicio. Es por ello que los picos que en principio no parecen tener explicación de mercado, responden a políticas de las petroleras mediante las cuales habilitan o recortan los volumenes destinados a las estaciones de servicio.
+
+
+
+**Consumo en Volumen GNC**
+```{r}
+autoplot(data_serie_gnc)+
+  labs(title = "Consumo de GNC",       
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "#00a0dc")+
+    theme_bw() 
+```
+
+El volumen de GNC muestra una reducción paulatina debido a: 
+  1) La renovación del parque automotor
+  2) Impuestos que incrementan el precio del GNC achicando la brecha con la Nafta de Grado 2
+  3) Extensión de los tiempos de garantía de los nuevos vehiculos (3+ años)
+
+Estos motivos son algunos de los problemas que condicionan la evolución del volúmen del GNC, el cual no se ve aún mas afectado debido a las distintas crisis económicas que alientan su consumo.
+
+
+**Consumo en Volumen Nafta Grado 2 **
+```{r}
+autoplot(data_serie_super)+
+  labs(title = "Consumo de Nafta Grado 2",       
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "#00a0dc")+
+    theme_bw() 
+```
+
+Al igual que en los otros combustibles se observa una fuerte caída en 2020 debido a la pandemia COVID, lo cual motiva este análisis.
+
+## Grafico de la serie de tiempo con su tendencia
+
+**Se analizan los datos, tendencia (trend), estacionalidad (seasonal), residualidad (reminder) **
+
+```{r}
+fit <- decompose(data_serie_gnc, type='multiplicative')
+
+autoplot(fit)+
+  labs(title = "Descomposición de la Volumen GNC",                   
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "Gears")+
+    theme_bw()
+```
+
+
+**Se grafica la serie de tiempo del volumen de combustible con su tendencia. **
+
+```{r}
+autoplot(data_serie_gnc, series="Valores Volumen") + 
+    autolayer(trendcycle(fit), series="Tendencia") +
+    labs(title = "Serie Volumen GNC",      
+       x = "Tiempo",
+       y = "Valor"
+       ) + 
+    theme_bw()
+```
+
+```{r}
+fit <- decompose(data_serie_super, type='multiplicative')
+
+autoplot(fit)+
+  labs(title = "Descomposición de la Volumen N.Grado 2",                   
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "Gears")+
+    theme_bw()
+```
+
+##Grafico de la serie de tiempo con su tendencia
+
+**Se grafica la serie de tiempo del volumen de combustible con su tendencia. **
+
+```{r}
+autoplot(data_serie_super, series="Valores Volumen") + 
+    autolayer(trendcycle(fit), series="Tendencia") +
+    labs(title = "Serie Volumen Nafta Grado 2",      
+       x = "Tiempo",
+       y = "Volumen"
+       ) + 
+    theme_bw()
+```
+
+Se descompone una serie de tiempo en componentes estacionales en cuanto a su tendencia e irregulares utilizando promedios móviles.
+
+```{r}
+fit <- decompose(data_serie_premium, type='multiplicative')
+
+autoplot(fit)+
+  labs(title = "Descomposición de la Volumen N.Grado 3",                   
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "Gears")+
+    theme_bw()
+```
+
+## Grafico de la serie de tiempo con su tendencia
+
+**Se grafica la serie de tiempo del volumen de combustible con su tendencia. **
+
+```{r}
+autoplot(data_serie_premium, series="Valores Volumen") + 
+    autolayer(trendcycle(fit), series="Tendencia") +
+    labs(title = "Serie Volumen N. Grado 3",      
+       x = "Tiempo",
+       y = "Valor"
+       ) + 
+    theme_bw()
+```
+
+## Grafico de estacionalidad
+
+**Analizamos la estacionalidad del consumo de GNC por mes a través de los años.**
+```{r}
+ggseasonplot(data_serie_gnc)
+```
+
+##################################################################
+##################################################################
+
+```{r}
+fit <- decompose(data_serie_premium, type='multiplicative')
+
+autoplot(fit)+
+  labs(title = "Descomposición de la Volumen Nafta Grado 3",                   
+       x = "Tiempo",
+       y = "Volumen",
+       colour = "Gears")+
+    theme_bw()
+```
+
+## Grafico de la serie de tiempo con su tendencia N.Nafta Grado 3
+
+**Se grafica la serie de tiempo del volumen de combustible con su tendencia. **
+
+```{r}
+autoplot(data_serie_premium, series="Valores Volumen") + 
+    autolayer(trendcycle(fit), series="Tendencia") +
+    labs(title = "Serie Volumen Nafta Grado 3",      
+       x = "Tiempo",
+       y = "Valor"
+       ) + 
+    theme_bw()
+```
+
+## Grafico de estacionalidad Nafta Grado 3
+
+**Analizamos la estacionalidad del consumo de Premium por mes a través de los años.**
+```{r}
+ggseasonplot(data_serie_premium)
+```
+
+
+# Pronóstico
+
+El objetivo de las técnicas de predicción no causal, es obtener estimaciones o pronósticos de valores futuros de una serie temporal a partir de la información histórica contenida en la serie observada hasta el momento actual. Estas técnicas no requieren la especificación de los factores que determinan el comportamiento de la variable, sino que se basan únicamente en la modelización del comportamiento sistemático de la serie. 
+
+Se utilizarán 4 métodos para los diferentes combustibles, los cuales son:
+
+- **Naive**: es la aplicación de un supuesto simple: en el próximo periodo se repetirá la demanda actual.
+
+- **Regresión**: se predice la demanda futura a partir de una línea recta formada por los datos de demandas pasadas. Si sólo se usa una variable del pasado se le llama regresión simple. Si se usan dos o más variables del pasado, se le nombra regresión múltiple.
+
+- **ARIMA** *(Modelos autorregresivos, integrados, promedios móviles)*: consideran las series de tiempo como la realización de un procesos estocástico definiendo los modelos autorregresivos (AR) y promedios móviles (MA).  
+Estos modelos se destacan porque con un número reducido de parámetros permiten explicar la estructura de correlación que domina a una serie.
+Los modelos ARIMA, por lo general predicen bien para horizontes de tiempo (h) fuera de la muestra cortos y medios. El desempeño de los pronósticos de distintos modelos puede variar según sea la amplitud de dicho horizonte.
+
+
+- **El método Holt-Winters**:  es una extensión del método Holt que considera solo dos exponentes suavizantes. Holt-Winters considera nivel, tendencia y estacional de una determinada serie de tiempos. Este método tiene dos principales modelos, dependiendo del tipo de estacionalidad:
+. el modelo multiplicativo estacional: Este modelo presupone que a medida que se incrementan los datos, también se incrementa el patrón estacional. La mayoría de las gráficas de series de tiempo muestran este patrón. En este modelo, la tendencia y los componentes de estación se multiplican y luego se suman al componente de error.
+. el modelo aditivo estacional: Un modelo de datos en el que los efectos de los factores individuales se diferencian y se agrupan para modelar los datos. Un modelo aditivo es opcional para los procedimientos de descomposición y para el método de Winters. En este trabajo aplicaremos el modelo "multiplicativo".
+
+## Método Naive de predicción para N.Grado 2
+```{r}
+# elaborando el método
+m1_g2 <- snaive(data_serie_super, h=24)
+
+# graficando el pronóstico
+autoplot(m1_g2)
+
+
+```
+
+## Método regresión con N. Grado 2
+
+```{r}
+# elaborando la regresion
+regresion <- tslm(data_serie_super ~ trend + season)
+
+# elaborando el pronostico
+m2_g2 <- forecast(regresion, h=96)
+
+# graficando el pronóstico
+autoplot(m2_g2)
+
+```
+
+
+## Método Holt-Winters con N. Grado 2
+```{r}
+# elaborando el pronostico
+m3_g2 <- hw(data_serie_super, h=96, seasonal = 'multiplicative')
+
+# graficando el pronóstico
+autoplot(m3_g2)
+
+```
+
+## ARIMA N. Grado 2
+
+```{r}
+# elaborando el modelo ARIMA
+modelo_arima <- auto.arima(data_serie_super)
+
+# elaborando el pronostico
+m4_g2 <- forecast(modelo_arima, h=96)
+
+# graficando el pronóstico
+autoplot(m4_g2)
+
+
+```
+
+## Métodos Naive GNC
+
+```{r}
+# elaborando el método
+m1_gnc <- snaive(data_serie_gnc, h=24)
+
+# graficando el pronóstico
+autoplot(m1_gnc)
+
+
+```
+
+## Método regresión GNC
+
+
+```{r}
+# elaborando la regresion
+regresion <- tslm(data_serie_gnc ~ trend + season)
+
+# elaborando el pronostico
+m2_gnc <- forecast(regresion, h=96)
+
+# graficando el pronóstico
+autoplot(m2_gnc)
+
+```
+
+
+## Método Holt-Winters GNC
+```{r}
+# elaborando el pronostico
+m3_gnc <- hw(data_serie_gnc, h=96, seasonal = 'multiplicative')
+
+# graficando el pronóstico
+autoplot(m3_gnc)
+
+
+```
+
+## ARIMA GNC
+
+```{r}
+# elaborando el modelo ARIMA
+modelo_arima <- auto.arima(data_serie_gnc)
+
+# elaborando el pronostico
+m4_gnc <- forecast(modelo_arima, h=96)
+
+# graficando el pronóstico
+autoplot(m4_gnc)
+
+
+
+```
+## Métodos Naive N. Grado 3
+
+```{r}
+# elaborando el método
+m1_g3 <- snaive(data_serie_premium, h=24)
+
+# graficando el pronóstico
+autoplot(m1_g3)
+
+```
+
+## Método regresión  N. Grado 3
+
+
+```{r}
+# elaborando la regresion
+regresion <- tslm(data_serie_premium ~ trend + season)
+
+# elaborando el pronostico
+m2_g3 <- forecast(regresion, h=96)
+
+# graficando el pronóstico
+autoplot(m2_g3)
+
+```
+
+
+## Método Holt-Winters N. Grado 3
+```{r}
+# elaborando el pronostico
+m3_g3 <- hw(data_serie_premium, h=96, seasonal = 'multiplicative')
+
+# graficando el pronóstico
+autoplot(m3_g3)
+
+```
+
+## ARIMA  N. Grado 3
+
+```{r}
+# elaborando el modelo ARIMA
+modelo_arima <- auto.arima(data_serie_premium)
+
+# elaborando el pronostico
+m4_g3 <- forecast(modelo_arima, h=96)
+
+# graficando el pronóstico
+autoplot(m4_g3)
+
+
+
+```
+
+# Respuesta de la pregunta de Investigación
+
+De acuerdo al análisis de los métodos de estudio predictivo de la demanda, podemos inferir que si se pueden predecir a futuro la demanda de consumo de los distintos productos. Cabe aclarar que se debe seleccionar el método más adecuado con el que debemos trabajar en función del error que nos da en la predicción al comparar, la data real con la predicción antes realizada.
+
+Esto podemos hacerlo de dos maneras:
+-	Analizando gráficamente su distribución y ajuste( residuales), el método que tenga los residuales mas cercanos a una distribución normal y que su ajuste esté dentro de los parámetros punteados, mejor es.
+
+
+## Ajuste y verificación del residual del Método Naive de predicción para N.Grado 2 
+```{r}
+# Verificando el ajuste del método
+autoplot(m1_g2)+autolayer(fitted(m1_g2), series="Ajuste")
+
+# verificando los residuales  
+checkresiduals(m1_g2)
+```
+
+##  Ajuste y verificación del residual del Método regresión con N. Grado 2
+
+```{r}
+# verificando el ajuste del método
+autoplot(m2_g2)+autolayer(fitted(m2_g2), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m2_g2)
+```
+
+
+## Ajuste y verificación del residual del Método Holt-Winters con N. Grado 2
+```{r}
+# verificando el ajuste del método
+autoplot(m3_g2)+autolayer(fitted(m3_g2), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m3_g2)
+```
+
+## Ajuste y verificación del residual del ARIMA N. Grado 2
+
+```{r}
+
+# verificando el ajuste del método
+autoplot(m4_g2)+autolayer(fitted(m4_g2), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m4_g2)
+
+```
+
+##  Ajuste y verificación del residual del Métodos Naive GNC
+
+```{r}
+
+# verificando el ajuste del método
+autoplot(m1_gnc)+autolayer(fitted(m1_gnc), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m1_gnc)
+```
+
+##  Ajuste y verificación del residual del Método regresión GNC
+
+
+```{r}
+
+# verificando el ajuste del método
+autoplot(m2_gnc)+autolayer(fitted(m2_gnc), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m2_gnc)
+```
+
+
+##  Ajuste y verificación del residual del Método Holt-Winters GNC
+```{r}
+
+# verificando el ajuste del método
+autoplot(m3_gnc)+autolayer(fitted(m3_gnc), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m3_gnc)
+```
+
+##  Ajuste y verificación del residual del ARIMA GNC
+
+```{r}
+
+# verificando el ajuste del método
+autoplot(m4_gnc)+autolayer(fitted(m4_gnc), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m4_gnc)
+
+```
+##  Ajuste y verificación del residual del Método Naive N. Grado 3
+
+```{r}
+
+# verificando el ajuste del método
+autoplot(m1_g3)+autolayer(fitted(m1_g3), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m1_g3)
+```
+
+##  Ajuste y verificación del residual del Método regresión  N. Grado 3
+
+
+```{r}
+
+# verificando el ajuste del método
+autoplot(m2_g3)+autolayer(fitted(m2_g3), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m2_g3)
+```
+
+
+##  Ajuste y verificación del residual del Método Holt-Winters N. Grado 3
+```{r}
+
+# verificando el ajuste del método
+autoplot(m3_g3)+autolayer(fitted(m3_g3), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m3_g3)
+```
+
+##  Ajuste y verificación del residual del ARIMA  N. Grado 3
+
+```{r}
+
+# verificando el ajuste del método
+autoplot(m4_g3)+autolayer(fitted(m4_g3), series="Ajuste")
+
+# verificando los residuales
+checkresiduals(m4_g3)
+
+
+```
+
+
+## En resumen 
+
+El método que tenga los residuales mas cercanos a una distribución normal y que su ajuste esté dentro de los parámetros punteados, mejor es.
+
+En nuestro caso los dos mejores métodos son ARIMA y Holt-Winters como se puede apreciar en los gáficos precedentes.
+
+La prueba final para evaluar estos métodos se realiza con los datos Reales que sucedan en el futuro y se comparan con los estmados por el pronóstico, esto se realiza evaluando diferentes variables dentro de las cuales la más importante es RMSE (también se calculan MSE y MAPE). El que nos de la menor medida de RMSE es el método predictivo que más se acercará a futuro a los datos reales para ese periodo de tiempo y dentro de una distribución normal.
+En R esta comparación entre los datos reales y el pronóstico se puede hacer con la función “accuracy(vector datos,..)",Lo que nos devolverá las variables antes mencionadas dentro de las cuales, el método que menor valor de RMSE tenga, mejor es.
+
